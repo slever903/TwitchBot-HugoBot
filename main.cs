@@ -22,10 +22,8 @@ using System.Net.Sockets;
 using System.IO;
 using System.Threading; 
 /* 
-* This program establishes a connection to irc server, joins a channel and greets every nickname that
-* joins the channel.
-*
-* Coded by Pasi Havia 17.11.2001 http://koti.mbnet.fi/~curupted
+
+* Connection work coded by Pasi Havia 17.11.2001 http://koti.mbnet.fi/~curupted
 */ 
 class IrcBot
 {
