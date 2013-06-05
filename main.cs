@@ -28,15 +28,15 @@ using System.Threading;
 class IrcBot
 {
   // Irc server to connect 
-  public static string SERVER = "fuzzyhunter.jtvirc.com";
+	public static string SERVER = "fuzzyhunter.jtvirc.com";
   // Irc server's port (6667 is default port)
   private static int PORT = 6667; 
   // User information defined in RFC 2812 (Internet Relay Chat: Client Protocol) is sent to irc server 
-  private static string USER = "HugoBot"; 
+  private static string USER = "ShatteredBot"; 
   // Password for the server
   private static string PASS = "LolPassword";
   // Bot's nickname
-  private static string NICK = "HugoBot"; 
+  private static string NICK = "ShatteredBot"; 
   // Channel to join
   private static string CHANNEL = "#fuzzyhunter"; 
   // StreamWriter is declared here so that PingSender can access it
@@ -51,6 +51,7 @@ class IrcBot
     try
     {
       irc = new TcpClient (SERVER, PORT);
+	  Console.WriteLine("Connected");
       stream = irc.GetStream ();
       reader = new StreamReader (stream);
       writer = new StreamWriter (stream); 
@@ -76,10 +77,12 @@ class IrcBot
             // Welcome the nickname to channel by sending a notice
             writer.WriteLine ("PRIVMSG " + CHANNEL + " :Hi " + nickname + " and welcome to " + CHANNEL + " channel!"); 
             writer.Flush ();
+			Console.WriteLine("Hi " + nickname);
             // Sleep to prevent excess flood
             Thread.Sleep (10000);
           }
-        } 
+        }
+		Console.WriteLine("End While");
         // Close all streams
         writer.Close ();
         reader.Close ();
