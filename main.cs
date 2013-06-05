@@ -33,6 +33,8 @@ class IrcBot
   private static int PORT = 6667; 
   // User information defined in RFC 2812 (Internet Relay Chat: Client Protocol) is sent to irc server 
   private static string USER = "HugoBot"; 
+  // Password for the server
+  private static string PASS = "LolPassword";
   // Bot's nickname
   private static string NICK = "HugoBot"; 
   // Channel to join
@@ -73,7 +75,7 @@ class IrcBot
             writer.WriteLine ("NOTICE " + nickname + " :Hi " + nickname + " and welcome to " + CHANNEL + " channel!"); 
             writer.Flush ();
             // Sleep to prevent excess flood
-            Thread.Sleep (2000);
+            Thread.Sleep (10000);
           }
         } 
         // Close all streams
