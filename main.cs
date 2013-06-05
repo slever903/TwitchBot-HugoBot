@@ -57,6 +57,8 @@ class IrcBot
       // Start PingSender thread
       PingSender ping = new PingSender ();
       ping.Start (); 
+      writer.WriteLine ("PASS " + PASS);
+      writer.Flush ();
       writer.WriteLine (USER);
       writer.Flush ();
       writer.WriteLine ("NICK " + NICK);
@@ -72,7 +74,7 @@ class IrcBot
             // Parse nickname of person who joined the channel
             nickname = inputLine.Substring(1, inputLine.IndexOf ("!") - 1);
             // Welcome the nickname to channel by sending a notice
-            writer.WriteLine ("NOTICE " + nickname + " :Hi " + nickname + " and welcome to " + CHANNEL + " channel!"); 
+            writer.WriteLine ("PRIVMSG " + CHANNEL + " :Hi " + nickname + " and welcome to " + CHANNEL + " channel!"); 
             writer.Flush ();
             // Sleep to prevent excess flood
             Thread.Sleep (10000);
