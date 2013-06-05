@@ -2,6 +2,7 @@ using System;
 using System.Threading; 
 /*
 * Class that sends PING to irc server every 15 seconds
+* Coded by Pasi Havia 17.11.2001 http://koti.mbnet.fi/~curupted
 */
 class PingSender
 {
