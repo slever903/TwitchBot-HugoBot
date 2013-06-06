@@ -9,7 +9,7 @@ using System.Threading;
 using System.Collections.Generic; 
 /* 
 * Connection work coded by Pasi Havia 17.11.2001 http://koti.mbnet.fi/~curupted
-* Bulk of the coding done by FuzzyHunter
+* Bulk of the command and saving coding done by FuzzyHunter
 * Moral support by slever
 */ 
 class IrcBot
