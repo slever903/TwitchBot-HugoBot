@@ -21,7 +21,8 @@ using System.Xml;
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
-using System.Threading; 
+using System.Threading;
+using System.Collections.Generic; 
 /* 
 * Connection work coded by Pasi Havia 17.11.2001 http://koti.mbnet.fi/~curupted
 */ 
@@ -42,7 +43,9 @@ class IrcBot
 	// StreamWriter is declared here so that PingSender can access it
 	public static StreamWriter writer; 
 	private static enum userLevels {Owner=1, Mod, Regular, User, Dicklist};
-	
+
+	private Dictionary<string, string> commands;
+
 	private string ReadXml (string command)
 	{
 		//TODO add reader commands to check 1) if a command is real 2) check the needed userlevel 3) push back the result
