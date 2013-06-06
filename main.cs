@@ -1,5 +1,8 @@
-/** Made for ShatteredWolf twitch chat to connect via IRC **/
-
+/** Made for ShatteredWolf twitch chat to connect via IRC 
+* Connection work coded by Pasi Havia 17.11.2001 http://koti.mbnet.fi/~curupted
+* Bulk of the command and saving coding done by FuzzyHunter
+* Moral support by slever
+**/ 
 using System;
 using System.Xml;
 using System.Net;
@@ -7,11 +10,7 @@ using System.Net.Sockets;
 using System.IO;
 using System.Threading;
 using System.Collections.Generic; 
-/* 
-* Connection work coded by Pasi Havia 17.11.2001 http://koti.mbnet.fi/~curupted
-* Bulk of the command and saving coding done by FuzzyHunter
-* Moral support by slever
-*/ 
+
 class IrcBot
 {
 	// Irc server to connect 
