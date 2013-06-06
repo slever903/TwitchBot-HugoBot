@@ -3,18 +3,20 @@
 * Bulk of the command and saving coding done by FuzzyHunter
 * Moral support by slever
 **/ 
+
 using System;
 using System.Xml;
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
 using System.Threading;
-using System.Collections.Generic; 
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 class IrcBot
 {
 	// Irc server to connect 
-	public static string SERVER = "fuzzyhunter.jtvirc.com";
+    public static string SERVER = "199.9.250.229";
 	// Irc server's port (6667 is default port)
 	private static int PORT = 6667; 
 	// User information defined in RFC 2812 (Internet Relay Chat: Client Protocol) is sent to irc server 
@@ -43,13 +45,7 @@ class IrcBot
 		}
 	};
 	private static List<Command> commands;
-
-	private string readXml (string command)
-	{
-		//TODO add reader commands to check 1) if a command is real 2) check the needed userlevel 3) push back the result
-		return "Not found";
-	}
-
+    
 	private void loadCommands()
 	{
 		commands = new List<Command>();
@@ -91,7 +87,7 @@ class IrcBot
 
 		Console.WriteLine("Commands saved");
 	}
-
+    
 	static void Main (string[] args)
 	{ 
 		NetworkStream stream;
@@ -99,6 +95,7 @@ class IrcBot
 		string inputLine;
 		StreamReader reader;
 		string nickname;
+        
 
 		commands = new List<Command>();
 		commands.Add(new Command("!test", userLevels.User, "Testing the XML"));
@@ -127,10 +124,10 @@ class IrcBot
 			{ 
 				while ( (inputLine = reader.ReadLine () ) != null )
 				{
+                    //strip out the nickname of the person who used the command
+                    nickname = inputLine.Substring(1, inputLine.IndexOf("!") - 1);
 					if (inputLine.EndsWith ("JOIN " + CHANNEL) )
 					{
-						// Parse nickname of person who joined the channel
-						nickname = inputLine.Substring(1, inputLine.IndexOf ("!") - 1);
 						// Welcome the nickname to channel by sending a notice
 						writer.WriteLine ("PRIVMSG " + CHANNEL + " :Hi " + nickname + " and welcome to " + CHANNEL + " channel!"); 
 						writer.Flush ();
@@ -138,6 +135,12 @@ class IrcBot
 						// Sleep to prevent excess flood
 						Thread.Sleep (10000);
 					}
+                    Console.WriteLine(inputLine);
+                    if (inputLine.Contains(":!"))
+                    {
+                        Console.WriteLine("Something happened");
+                        writer.WriteLine("PRIVMSG " + CHANNEL + " :Hai " + nickname);
+                    }
 				}
 				Console.WriteLine("End While");
 				// Close all streams
@@ -155,7 +158,5 @@ class IrcBot
 		Main (argv);
 		}
 	}
-
-
 } 
 
