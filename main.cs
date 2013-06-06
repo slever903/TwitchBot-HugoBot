@@ -42,15 +42,22 @@ class IrcBot
 	private static string CHANNEL = "#fuzzyhunter"; 
 	// StreamWriter is declared here so that PingSender can access it
 	public static StreamWriter writer; 
-	private static enum userLevels {Owner=1, Mod, Regular, User, Dicklist};
+	public enum userLevels {Owner=1, Mod, Regular, User, Dicklist};
 
-	struct Command
+	public struct Command
 	{
 		public string trigger;
 		public userLevels level;
 		public string response;
+
+		public Command(string trigger, userLevels level, string response)
+		{
+			this.trigger = trigger;
+			this.level = level;
+			this.response = response;
+		}
 	};
-	private List<Command> commands;
+	private static List<Command> commands;
 
 	private string ReadXml (string command)
 	{
@@ -58,9 +65,26 @@ class IrcBot
 		return "Not found";
 	}
 
-	private void saveCommands()
+	private void loadCommands()
 	{
-		using (XmlWriter writer = XmlWriter.Create("commands.xml"))
+		commands = new List<Command>();
+
+		XmlTextReader reader = new XmlTextReader("commands.xml");
+		reader.WhitespaceHandling = WhitespaceHandling.None;
+
+		while (reader.Read())
+		{
+
+		}
+	}
+
+	private static void saveCommands()
+	{
+		XmlWriterSettings settings = new XmlWriterSettings();
+		settings.Indent = true;
+		settings.IndentChars = "\t";
+
+		using (XmlWriter writer = XmlWriter.Create("commands.xml", settings))
 		{
 			writer.WriteStartDocument();
 			writer.WriteStartElement("Commands");
@@ -69,9 +93,9 @@ class IrcBot
 			{
 				writer.WriteStartElement("Command");
 
-				writer.WriteElementString("Trigger", command.trigger);
-				writer.WriteElementString("Level", command.level.ToString());
-				writer.WriteElementString("Response", command.response);
+				writer.WriteAttributeString("Trigger", command.trigger);
+				writer.WriteAttributeString("Level", command.level.ToString());
+				writer.WriteAttributeString("Response", command.response);
 
 				writer.WriteEndElement();
 			}
@@ -79,6 +103,8 @@ class IrcBot
 			writer.WriteEndElement();
 			writer.WriteEndDocument();
 		}
+
+		Console.WriteLine("Commands saved");
 	}
 
 	static void Main (string[] args)
@@ -87,7 +113,13 @@ class IrcBot
 		TcpClient irc;
 		string inputLine;
 		StreamReader reader;
-		string nickname; 
+		string nickname;
+
+		commands = new List<Command>();
+		commands.Add(new Command("!test", userLevels.User, "Testing the XML"));
+		commands.Add(new Command("!test3", userLevels.Mod, "Testing again"));
+		saveCommands();
+
 		try
 		{
 			irc = new TcpClient (SERVER, PORT);
