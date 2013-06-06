@@ -48,7 +48,29 @@ class IrcBot
 		//TODO add reader commands to check 1) if a command is real 2) check the needed userlevel 3) push back the result
 		return "Not found";
 	}
-	
+
+	private void saveCommands()
+	{
+		using (XmlWriter writer = XmlWriter.Create("commands.xml"))
+		{
+			writer.WriteStartDocument();
+			writer.WriteStartElement("Commands");
+
+			foreach (var command in commands)
+			{
+				writer.WriteStartElement("Command");
+
+				writer.WriteElementString("Trigger", command.Key);
+				writer.WriteElementString("Response", command.Value);
+
+				writer.WriteEndElement();
+			}
+
+			writer.WriteEndElement();
+			writer.WriteEndDocument();
+		}
+	}
+
 	static void Main (string[] args)
 	{ 
 		NetworkStream stream;
@@ -106,5 +128,7 @@ class IrcBot
 		Main (argv);
 		}
 	}
+
+
 } 
 
