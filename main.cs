@@ -42,6 +42,13 @@ class IrcBot
 	// StreamWriter is declared here so that PingSender can access it
 	public static StreamWriter writer; 
 	private static enum userLevels {Owner=1, Mod, Regular, User, Dicklist};
+	
+	private string ReadXml (string command)
+	{
+		//TODO add reader commands to check 1) if a command is real 2) check the needed userlevel 3) push back the result
+		return "Not found";
+	}
+	
 	static void Main (string[] args)
 	{ 
 		NetworkStream stream;
