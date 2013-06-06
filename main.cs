@@ -44,7 +44,13 @@ class IrcBot
 	public static StreamWriter writer; 
 	private static enum userLevels {Owner=1, Mod, Regular, User, Dicklist};
 
-	private Dictionary<string, string> commands;
+	struct Command
+	{
+		public string trigger;
+		public userLevels level;
+		public string response;
+	};
+	private List<Command> commands;
 
 	private string ReadXml (string command)
 	{
@@ -59,12 +65,13 @@ class IrcBot
 			writer.WriteStartDocument();
 			writer.WriteStartElement("Commands");
 
-			foreach (var command in commands)
+			foreach (Command command in commands)
 			{
 				writer.WriteStartElement("Command");
 
-				writer.WriteElementString("Trigger", command.Key);
-				writer.WriteElementString("Response", command.Value);
+				writer.WriteElementString("Trigger", command.trigger);
+				writer.WriteElementString("Level", command.level.ToString());
+				writer.WriteElementString("Response", command.response);
 
 				writer.WriteEndElement();
 			}
