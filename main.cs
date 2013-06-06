@@ -1,21 +1,5 @@
 /** Made for ShatteredWolf twitch chat to connect via IRC **/
 
-//TODO: Everything man
-
-//Connect to server is priority
-
-/**
-#DEFINE UserName HugoBot
-//#DEFINE Password LolPassword
-#DEFINE Owner ShatteredWolf
-
-private enum userLevel {
-Owner=1,
-Mod,
-User,
-}; **/
-//For now I'll leave this here
-
 using System;
 using System.Xml;
 using System.Net;
@@ -25,6 +9,8 @@ using System.Threading;
 using System.Collections.Generic; 
 /* 
 * Connection work coded by Pasi Havia 17.11.2001 http://koti.mbnet.fi/~curupted
+* Bulk of the coding done by FuzzyHunter
+* Moral support by slever
 */ 
 class IrcBot
 {
@@ -59,7 +45,7 @@ class IrcBot
 	};
 	private static List<Command> commands;
 
-	private string ReadXml (string command)
+	private string readXml (string command)
 	{
 		//TODO add reader commands to check 1) if a command is real 2) check the needed userlevel 3) push back the result
 		return "Not found";
