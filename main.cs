@@ -17,12 +17,12 @@ User,
 //For now I'll leave this here
 
 using System;
+using System.Xml;
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
 using System.Threading; 
 /* 
-
 * Connection work coded by Pasi Havia 17.11.2001 http://koti.mbnet.fi/~curupted
 */ 
 class IrcBot
@@ -41,6 +41,7 @@ class IrcBot
 	private static string CHANNEL = "#fuzzyhunter"; 
 	// StreamWriter is declared here so that PingSender can access it
 	public static StreamWriter writer; 
+	private static enum userLevels {Owner=1, Mod, Regular, User, Dicklist};
 	static void Main (string[] args)
 	{ 
 		NetworkStream stream;
