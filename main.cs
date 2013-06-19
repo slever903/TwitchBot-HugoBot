@@ -105,7 +105,7 @@ class IrcBot
 		else
 		{
 			writer.WriteLine("PRIVMSG " + CHANNEL + " :.mods");
-			writer.Flush();
+			//writer.Flush();
 			string inputLine = reader.ReadLine();
 			string modList = inputLine.Substring(inputLine.IndexOf("are:") + 5);
 			string[] mods = modList.Split(' ');
@@ -132,6 +132,7 @@ class IrcBot
 		string inputLine;
 		StreamReader reader;
 		string nickname;
+		bool shouldWelcome = true;
 
 		loadCommands();
 
@@ -141,85 +142,61 @@ class IrcBot
 			Console.WriteLine("Connected");
 			stream = irc.GetStream ();
 			reader = new StreamReader (stream);
-			writer = new StreamWriter (stream); 
-			
+			writer = new StreamWriter (stream);
+
+			writer.AutoFlush = true;
+
 			// Start PingSender thread
 			PingSender ping = new PingSender ();
 			ping.Start (); 
 			
 			writer.WriteLine ("PASS " + PASS);
-			writer.Flush ();
+			//writer.Flush ();
 			writer.WriteLine (USER);
-			writer.Flush ();
+			//writer.Flush ();
 			writer.WriteLine ("NICK " + NICK);
-			writer.Flush ();
+			//writer.Flush ();
 			writer.WriteLine ("JOIN " + CHANNEL);
-			writer.Flush ();
+			//writer.Flush ();
 
 			while (true)
 			{ 
 				while ( (inputLine = reader.ReadLine () ) != null )
 				{
-                    //strip out the nickname of the person who used the command
-					Console.WriteLine(inputLine);
+					//Write out all IRC input
+					//Console.WriteLine(inputLine);
 
-					//if (inputLine.EndsWith ("JOIN " + CHANNEL) )
-					//{
-					//    nickname = inputLine.Substring(1, inputLine.IndexOf("!") - 1);
+					if (inputLine.EndsWith("JOIN " + CHANNEL) && shouldWelcome)
+					{
+						nickname = inputLine.Substring(1, inputLine.IndexOf("!") - 1);
 
-					//    // Welcome the nickname to channel by sending a notice
-					//    writer.WriteLine ("PRIVMSG " + CHANNEL + " :Hi " + nickname + " and welcome to " + CHANNEL + " channel!"); 
-					//    writer.Flush ();
-					//    Console.WriteLine("Hi " + nickname);
-					//    // Sleep to prevent excess flood
-					//    Thread.Sleep (10000);
-					//}
+						// Welcome the nickname to channel by sending a notice
+						writer.WriteLine("PRIVMSG " + CHANNEL + " :/me Hi " + nickname + ". Welcome to " + BROADCASTER + "'s channel!");
+						//writer.Flush();
+						Console.WriteLine("Welcomed " + nickname);
 
-					//if (inputLine.Contains(":!addcom"))
-					//{
-					//    string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
-
-					//    string[] words = commandInput.Split(' ');
-					//    string trigger = words[1];
-					//    List<string> responseWords = new List<string>();
-
-					//    for(int i = 2; i < words.Length; i++)
-					//    {
-					//        responseWords.Add(words[i]);
-					//    }
-
-					//    string response = String.Join(" ", responseWords);
-
-					//    commands.Add(new Command(trigger, userLevels.User, response));
-					//    saveCommands();
-
-					//    Console.WriteLine("Add command: " + trigger + ", " + response);
-					//}
-
-					//else if (inputLine.Contains(":!delcom"))
-					//{
-					//    string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
-
-					//    string[] words = commandInput.Split(' ');
-					//    string trigger = words[1];
-
-					//    for (int i = commands.Count - 1; i >= 0; i--)
-					//    {
-					//        if (commands[i].trigger == trigger)
-					//        {
-					//            Console.WriteLine("Deleting " + trigger + "...");
-					//            commands.RemoveAt(i);
-					//            saveCommands();
-					//            break;
-					//        }
-					//    }
-					//}
+						// Sleep to prevent excess flood
+						//Thread.Sleep(10000);
+					}
 
                     if (inputLine.Contains(":!"))
                     {
 						nickname = inputLine.Substring(1, inputLine.IndexOf("!") - 1);
-						
-						if (inputLine.Contains(":!addcom") && isMod(nickname, reader))
+
+						if (inputLine.Contains(":!welcome") && isMod(nickname, reader))
+						{
+							shouldWelcome = !shouldWelcome;
+							Console.WriteLine(nickname + " - Welcome toggled - " + shouldWelcome);
+
+							if (shouldWelcome)
+								writer.WriteLine("PRIVMSG " + CHANNEL + " :" + nickname + "-> Welcoming enabled");
+							else
+								writer.WriteLine("PRIVMSG " + CHANNEL + " :" + nickname + "-> Welcoming disabled");
+
+							//writer.Flush();
+						}
+
+						else if (inputLine.Contains(":!addcom") && isMod(nickname, reader))
 						{
 							string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
 
@@ -236,7 +213,7 @@ class IrcBot
 
 								string levelInput = words[1];
 								levelInput = levelInput.Replace("ul=", "");
-								Console.WriteLine(levelInput);
+								//Console.WriteLine(levelInput);
 
 								if (levelInput == "owner")
 									level = userLevels.Owner;
@@ -256,7 +233,10 @@ class IrcBot
 							commands.Add(new Command(trigger, level, response));
 							saveCommands();
 
-							Console.WriteLine("Add command: " + trigger + ", " + response);
+							Console.WriteLine(nickname + " - Adding command - " + trigger + ", " + response);
+
+							writer.WriteLine("PRIVMSG " + CHANNEL + " :" + nickname + "-> Added command " + trigger);
+							//writer.Flush();
 						}
 						else if (inputLine.Contains("!delcom") && isMod(nickname, reader))
 						{
@@ -269,9 +249,13 @@ class IrcBot
 							{
 								if (commands[i].trigger == trigger)
 								{
-									Console.WriteLine("Deleting " + trigger + "...");
+									Console.WriteLine(nickname + " - Deleting command - " + trigger);
 									commands.RemoveAt(i);
 									saveCommands();
+
+									writer.WriteLine("PRIVMSG " + CHANNEL + " :" + nickname + "-> Deleted command " + trigger);
+									//writer.Flush();
+
 									break;
 								}
 							}
@@ -288,7 +272,7 @@ class IrcBot
 									{
 										Console.WriteLine(nickname + " - " + commandInput + " - " + command.response);
 										writer.WriteLine("PRIVMSG " + CHANNEL + " :" + command.response);
-										writer.Flush();
+										//writer.Flush();
 										break;
 									}
 								}
