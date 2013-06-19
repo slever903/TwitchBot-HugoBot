@@ -46,7 +46,7 @@ class IrcBot
 	};
 	private static List<Command> commands;
     
-	private void loadCommands()
+	private static void loadCommands()
 	{
 		commands = new List<Command>();
 
@@ -55,8 +55,14 @@ class IrcBot
 
 		while (reader.Read())
 		{
-
+			if (reader.LocalName == "Command")
+			{
+				Console.WriteLine("Loading " + reader.GetAttribute(0) + "...");
+				commands.Add(new Command(reader.GetAttribute(0), (userLevels)Convert.ToInt32(reader.GetAttribute(1)), reader.GetAttribute(2)));
+			}
 		}
+
+		reader.Close();
 	}
 
 	private static void saveCommands()
@@ -75,7 +81,7 @@ class IrcBot
 				writer.WriteStartElement("Command");
 
 				writer.WriteAttributeString("Trigger", command.trigger);
-				writer.WriteAttributeString("Level", command.level.ToString());
+				writer.WriteAttributeString("Level", ((int)command.level).ToString());
 				writer.WriteAttributeString("Response", command.response);
 
 				writer.WriteEndElement();
@@ -87,7 +93,7 @@ class IrcBot
 
 		Console.WriteLine("Commands saved");
 	}
-    
+
 	static void Main (string[] args)
 	{ 
 		NetworkStream stream;
@@ -95,12 +101,8 @@ class IrcBot
 		string inputLine;
 		StreamReader reader;
 		string nickname;
-        
 
-		commands = new List<Command>();
-		commands.Add(new Command("!test", userLevels.User, "Testing the XML"));
-		commands.Add(new Command("!test3", userLevels.Mod, "Testing again"));
-		saveCommands();
+		loadCommands();
 
 		try
 		{
@@ -109,9 +111,11 @@ class IrcBot
 			stream = irc.GetStream ();
 			reader = new StreamReader (stream);
 			writer = new StreamWriter (stream); 
+			
 			// Start PingSender thread
 			PingSender ping = new PingSender ();
 			ping.Start (); 
+			
 			writer.WriteLine ("PASS " + PASS);
 			writer.Flush ();
 			writer.WriteLine (USER);
@@ -120,29 +124,65 @@ class IrcBot
 			writer.Flush ();
 			writer.WriteLine ("JOIN " + CHANNEL);
 			writer.Flush (); 
+			
 			while (true)
 			{ 
 				while ( (inputLine = reader.ReadLine () ) != null )
 				{
                     //strip out the nickname of the person who used the command
-                    nickname = inputLine.Substring(1, inputLine.IndexOf("!") - 1);
-					if (inputLine.EndsWith ("JOIN " + CHANNEL) )
+					//Console.WriteLine(inputLine);
+
+					//if (inputLine.EndsWith ("JOIN " + CHANNEL) )
+					//{
+					//    nickname = inputLine.Substring(1, inputLine.IndexOf("!") - 1);
+
+					//    // Welcome the nickname to channel by sending a notice
+					//    writer.WriteLine ("PRIVMSG " + CHANNEL + " :Hi " + nickname + " and welcome to " + CHANNEL + " channel!"); 
+					//    writer.Flush ();
+					//    Console.WriteLine("Hi " + nickname);
+					//    // Sleep to prevent excess flood
+					//    Thread.Sleep (10000);
+					//}
+
+					if (inputLine.Contains(":!addcom"))
 					{
-						// Welcome the nickname to channel by sending a notice
-						writer.WriteLine ("PRIVMSG " + CHANNEL + " :Hi " + nickname + " and welcome to " + CHANNEL + " channel!"); 
-						writer.Flush ();
-						Console.WriteLine("Hi " + nickname);
-						// Sleep to prevent excess flood
-						Thread.Sleep (10000);
+						string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
+
+						string[] words = commandInput.Split(' ');
+						string trigger = words[1];
+						List<string> responseWords = new List<string>();
+
+						for(int i = 2; i < words.Length; i++)
+						{
+							responseWords.Add(words[i]);
+						}
+
+						string response = String.Join(" ", responseWords);
+
+						commands.Add(new Command(trigger, userLevels.User, response));
+						saveCommands();
+
+						Console.WriteLine("Add command: " + trigger + ", " + response);
 					}
-                    Console.WriteLine(inputLine);
-                    if (inputLine.Contains(":!"))
+
+                    else if (inputLine.Contains(":!"))
                     {
-                        Console.WriteLine("Something happened");
-                        writer.WriteLine("PRIVMSG " + CHANNEL + " :Hai " + nickname);
+						nickname = inputLine.Substring(1, inputLine.IndexOf("!") - 1);
+						string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
+
+						foreach (Command command in commands)
+						{
+							if (command.trigger == commandInput)
+							{
+								Console.WriteLine(nickname + " - " + commandInput + " - " + command.response);
+								writer.WriteLine("PRIVMSG " + CHANNEL + " :" + command.response);
+								writer.Flush();
+								break;
+							}
+						}
                     }
 				}
-				Console.WriteLine("End While");
+
 				// Close all streams
 				writer.Close ();
 				reader.Close ();
