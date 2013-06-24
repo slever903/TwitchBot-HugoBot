@@ -22,7 +22,7 @@ class IrcBot
 	// User information defined in RFC 2812 (Internet Relay Chat: Client Protocol) is sent to irc server 
 	private static string USER = "ShatteredBot"; 
 	// Password for the server
-	private static string PASS = "LolPassword";
+	private static string PASS = "LolPassword123";
 	// Bot's nickname
 	private static string NICK = "ShatteredBot"; 
 	// Channel to join
@@ -170,13 +170,16 @@ class IrcBot
 					{
 						nickname = inputLine.Substring(1, inputLine.IndexOf("!") - 1);
 
-						// Welcome the nickname to channel by sending a notice
-						writer.WriteLine("PRIVMSG " + CHANNEL + " :/me Hi " + nickname + ". Welcome to " + BROADCASTER + "'s channel!");
-						//writer.Flush();
-						Console.WriteLine("Welcomed " + nickname);
+						if (nickname != USER.ToLower())
+						{
+							// Welcome the nickname to channel by sending a notice
+							writer.WriteLine("PRIVMSG " + CHANNEL + " :/me Hi " + nickname + ". Welcome to " + BROADCASTER + "'s channel!");
+							//writer.Flush();
+							Console.WriteLine("Welcomed " + nickname);
+						}
 
 						// Sleep to prevent excess flood
-						//Thread.Sleep(10000);
+						Thread.Sleep(500);
 					}
 
                     if (inputLine.Contains(":!"))
@@ -259,6 +262,55 @@ class IrcBot
 									break;
 								}
 							}
+						}
+						else if (inputLine.Contains("!editcom") && isMod(nickname, reader))
+						{
+							string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
+
+							string[] words = commandInput.Split(' ');
+							string trigger = words[1];
+							List<string> responseWords = new List<string>();
+							int responseIndex = 2;
+							userLevels level = userLevels.User;
+
+							if (commandInput.Contains("ul="))
+							{
+								responseIndex = 3;
+								trigger = words[2];
+
+								string levelInput = words[1];
+								levelInput = levelInput.Replace("ul=", "");
+								//Console.WriteLine(levelInput);
+
+								if (levelInput == "owner")
+									level = userLevels.Owner;
+								else if (levelInput == "mod")
+									level = userLevels.Mod;
+								else if (levelInput == "reg")
+									level = userLevels.Regular;
+							}
+
+							for (int i = responseIndex; i < words.Length; i++)
+							{
+								responseWords.Add(words[i]);
+							}
+
+							string response = String.Join(" ", responseWords);
+
+							for (int i = 0; i < commands.Count; i++)
+							{
+								if (commands[i].trigger == trigger)
+								{
+									commands.Add(new Command(trigger, level, response));
+									commands.Remove(commands[i]);
+									break;
+								}
+							}
+							saveCommands();
+
+							Console.WriteLine(nickname + " - Editing command - " + trigger + ", " + response);
+
+							writer.WriteLine("PRIVMSG " + CHANNEL + " :" + nickname + "-> Edited command " + trigger);
 						}
 						else
 						{
