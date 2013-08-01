@@ -26,13 +26,15 @@ class IrcBot
 	// Bot's nickname
 	private static string NICK = "ShatteredBot"; 
 	// Channel to join
-	private static string CHANNEL = "#fuzzyhunter";
+	private static string CHANNEL = "#shatteredwolf";
 	// Broadcaster
 	private static string BROADCASTER = CHANNEL.Trim('#');
 
 	// StreamWriter is declared here so that PingSender can access it
-	public static StreamWriter writer; 
-	public enum userLevels {Owner=1, Mod, Regular, User, Dicklist};
+	public static StreamWriter writer;
+    private static StreamReader reader;
+	
+    public enum userLevels {Owner=1, Mod, Regular, User, Dicklist};
 
 	public struct Command
 	{
@@ -47,7 +49,9 @@ class IrcBot
 			this.response = response;
 		}
 	};
+
 	private static List<Command> commands;
+    private static Queue<string> toDo = new Queue<string>();
     
 	private static void loadCommands()
 	{
@@ -97,6 +101,141 @@ class IrcBot
 		Console.WriteLine("Commands saved");
 	}
 
+    private static void addCommand(string commandInput, string nickname)
+    {
+        string[] words = commandInput.Split(' ');
+        string trigger = words[1];
+        List<string> responseWords = new List<string>();
+        int responseIndex = 2;
+        userLevels level = userLevels.User;
+
+        if (commandInput.Contains("ul="))
+        {
+            responseIndex = 3;
+            trigger = words[2];
+
+            string levelInput = words[1];
+            levelInput = levelInput.Replace("ul=", "");
+
+            if (levelInput == "owner")
+                level = userLevels.Owner;
+            else if (levelInput == "mod")
+                level = userLevels.Mod;
+            else if (levelInput == "reg")
+                level = userLevels.Regular;
+        }
+
+        for (int i = responseIndex; i < words.Length; i++)
+        {
+            responseWords.Add(words[i]);
+        }
+
+        string response = String.Join(" ", responseWords);
+
+        commands.Add(new Command(trigger, level, response));
+        saveCommands();
+
+        Console.WriteLine(nickname + " - Adding command - " + trigger + ", " + response);
+        toDo.Enqueue("PRIVMSG " + CHANNEL + " :" + nickname + "-> Added command " + trigger);
+    }
+
+    private static void deleteCommand(string commandInput, string nickname)
+    {
+        string[] words = commandInput.Split(' ');
+        string trigger = words[1];
+
+        for (int i = commands.Count - 1; i >= 0; i--)
+        {
+            if (commands[i].trigger == trigger)
+            {
+                Console.WriteLine(nickname + " - Deleting command - " + trigger);
+                commands.RemoveAt(i);
+                saveCommands();
+
+                toDo.Enqueue("PRIVMSG " + CHANNEL + " :" + nickname + "-> Deleted command " + trigger);
+
+                break;
+            }
+        }
+    }
+
+	private static void editCommand(string commandInput, string nickname)
+	{
+		string[] words = commandInput.Split(' ');
+		string trigger = words[1];
+		List<string> responseWords = new List<string>();
+		int responseIndex = 2;
+		userLevels level = userLevels.User;
+
+		if (commandInput.Contains("ul="))
+		{
+			responseIndex = 3;
+			trigger = words[2];
+
+			string levelInput = words[1];
+			levelInput = levelInput.Replace("ul=", "");
+
+			if (levelInput == "owner")
+				level = userLevels.Owner;
+			else if (levelInput == "mod")
+				level = userLevels.Mod;
+			else if (levelInput == "reg")
+				level = userLevels.Regular;
+		}
+
+		for (int i = responseIndex; i < words.Length; i++)
+		{
+			responseWords.Add(words[i]);
+		}
+
+		string response = String.Join(" ", responseWords);
+
+		for (int i = 0; i < commands.Count; i++)
+		{
+			if (commands[i].trigger == trigger)
+			{
+				commands.Add(new Command(trigger, level, response));
+				commands.Remove(commands[i]);
+				break;
+			}
+		}
+		saveCommands();
+
+		Console.WriteLine(nickname + " - Editing command - " + trigger + ", " + response);
+
+		toDo.Enqueue("PRIVMSG " + CHANNEL + " :" + nickname + "-> Edited command " + trigger);
+	}
+
+	private static void processCommand(string commandInput, string nickname)
+	{
+		string[] words = commandInput.Split(' ');
+
+		foreach (Command command in commands)
+		{
+			if (command.trigger == words[0])
+			{
+				if ((command.level < userLevels.Regular && isMod(nickname, reader)) || command.level >= userLevels.Regular)
+				{
+					string newResponse = command.response;
+
+					if (newResponse.Contains("@NICK@"))
+					{
+						if (words.Length > 1)
+						{
+							nickname = words[1];
+						}
+
+						newResponse = command.response.Replace("@NICK@", nickname);
+					}
+
+					Console.WriteLine(nickname + " - " + commandInput + " - " + newResponse);
+					toDo.Enqueue("PRIVMSG " + CHANNEL + " :" + newResponse);
+					break;
+				}
+			}
+		}
+	}
+
 	private static bool isMod(string nickname, StreamReader reader)
 	{
 		if (nickname == BROADCASTER)
@@ -125,15 +264,91 @@ class IrcBot
 		return false;
 	}
 
+    private static void processLine(string inputLine)
+    {
+        string nickname;
+        bool shouldWelcome = true;
+
+        if (inputLine.EndsWith("JOIN " + CHANNEL) && shouldWelcome)
+        {
+            nickname = inputLine.Substring(1, inputLine.IndexOf("!") - 1);
+
+            if (nickname != USER.ToLower())
+            {
+                // Welcome the nickname to channel by sending a notice
+                toDo.Enqueue("PRIVMSG " + CHANNEL + " :/me Hi " + nickname + ". Welcome to " + BROADCASTER + "'s channel!");
+                Console.WriteLine("Welcomed " + nickname);
+            }
+
+            // Sleep to prevent excess flood
+            Thread.Sleep(500);
+        }
+
+        if (inputLine.Contains(":!"))
+        {
+            nickname = inputLine.Substring(1, inputLine.IndexOf("!") - 1);
+
+            if (inputLine.Contains(":!welcome") && isMod(nickname, reader))
+            {
+                shouldWelcome = !shouldWelcome;
+                Console.WriteLine(nickname + " - Welcome toggled - " + shouldWelcome);
+
+                if (shouldWelcome)
+                    toDo.Enqueue("PRIVMSG " + CHANNEL + " :" + nickname + "-> Welcoming enabled");
+                else
+                    toDo.Enqueue("PRIVMSG " + CHANNEL + " :" + nickname + "-> Welcoming disabled");
+            }
+            else if (inputLine.Contains(":!addcom") && isMod(nickname, reader))
+            {
+                string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
+                addCommand(commandInput, nickname);
+            }
+            else if (inputLine.Contains("!delcom") && isMod(nickname, reader))
+            {
+                string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
+                deleteCommand(commandInput, nickname);
+            }
+            else if (inputLine.Contains("!editcom") && isMod(nickname, reader))
+            {
+                string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
+				editCommand(commandInput, nickname);
+            }
+            else
+            {
+                string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
+				processCommand(commandInput, nickname);
+            }
+        }
+    }
+
+    private static void readQueue()
+    {
+        Console.WriteLine("Read Queue Started");
+
+        while (true)
+        {
+            if (toDo.Count > 0)
+            {
+                writer.WriteLine(toDo.Dequeue());
+                Thread.Sleep(10);
+            }
+        }
+    }
+
+    private static void getText()
+    {
+        while (true)
+        {
+            toDo.Enqueue("PRIVMSG " + CHANNEL + " :" + Console.ReadLine());
+        }
+    }
+
 	static void Main (string[] args)
 	{ 
 		NetworkStream stream;
 		TcpClient irc;
-		string inputLine;
-		StreamReader reader;
-		string nickname;
-		bool shouldWelcome = true;
-
+        string inputLine;
+		
 		loadCommands();
 
 		try
@@ -159,6 +374,12 @@ class IrcBot
 			writer.WriteLine ("JOIN " + CHANNEL);
 			//writer.Flush ();
 
+            Thread toDoThread = new Thread(new ThreadStart(readQueue));
+            toDoThread.Start();
+
+            Thread getTextThread = new Thread(new ThreadStart(getText));
+            getTextThread.Start();
+
 			while (true)
 			{ 
 				while ( (inputLine = reader.ReadLine () ) != null )
@@ -166,171 +387,7 @@ class IrcBot
 					//Write out all IRC input
 					//Console.WriteLine(inputLine);
 
-					if (inputLine.EndsWith("JOIN " + CHANNEL) && shouldWelcome)
-					{
-						nickname = inputLine.Substring(1, inputLine.IndexOf("!") - 1);
-
-						if (nickname != USER.ToLower())
-						{
-							// Welcome the nickname to channel by sending a notice
-							writer.WriteLine("PRIVMSG " + CHANNEL + " :/me Hi " + nickname + ". Welcome to " + BROADCASTER + "'s channel!");
-							//writer.Flush();
-							Console.WriteLine("Welcomed " + nickname);
-						}
-
-						// Sleep to prevent excess flood
-						Thread.Sleep(500);
-					}
-
-                    if (inputLine.Contains(":!"))
-                    {
-						nickname = inputLine.Substring(1, inputLine.IndexOf("!") - 1);
-
-						if (inputLine.Contains(":!welcome") && isMod(nickname, reader))
-						{
-							shouldWelcome = !shouldWelcome;
-							Console.WriteLine(nickname + " - Welcome toggled - " + shouldWelcome);
-
-							if (shouldWelcome)
-								writer.WriteLine("PRIVMSG " + CHANNEL + " :" + nickname + "-> Welcoming enabled");
-							else
-								writer.WriteLine("PRIVMSG " + CHANNEL + " :" + nickname + "-> Welcoming disabled");
-
-							//writer.Flush();
-						}
-
-						else if (inputLine.Contains(":!addcom") && isMod(nickname, reader))
-						{
-							string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
-
-							string[] words = commandInput.Split(' ');
-							string trigger = words[1];
-							List<string> responseWords = new List<string>();
-							int responseIndex = 2;
-							userLevels level = userLevels.User;
-
-							if (commandInput.Contains("ul="))
-							{
-								responseIndex = 3;
-								trigger = words[2];
-
-								string levelInput = words[1];
-								levelInput = levelInput.Replace("ul=", "");
-								//Console.WriteLine(levelInput);
-
-								if (levelInput == "owner")
-									level = userLevels.Owner;
-								else if (levelInput == "mod")
-									level = userLevels.Mod;
-								else if (levelInput == "reg")
-									level = userLevels.Regular;
-							}
-
-							for (int i = responseIndex; i < words.Length; i++)
-							{
-								responseWords.Add(words[i]);
-							}
-
-							string response = String.Join(" ", responseWords);
-
-							commands.Add(new Command(trigger, level, response));
-							saveCommands();
-
-							Console.WriteLine(nickname + " - Adding command - " + trigger + ", " + response);
-
-							writer.WriteLine("PRIVMSG " + CHANNEL + " :" + nickname + "-> Added command " + trigger);
-							//writer.Flush();
-						}
-						else if (inputLine.Contains("!delcom") && isMod(nickname, reader))
-						{
-							string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
-
-							string[] words = commandInput.Split(' ');
-							string trigger = words[1];
-
-							for (int i = commands.Count - 1; i >= 0; i--)
-							{
-								if (commands[i].trigger == trigger)
-								{
-									Console.WriteLine(nickname + " - Deleting command - " + trigger);
-									commands.RemoveAt(i);
-									saveCommands();
-
-									writer.WriteLine("PRIVMSG " + CHANNEL + " :" + nickname + "-> Deleted command " + trigger);
-									//writer.Flush();
-
-									break;
-								}
-							}
-						}
-						else if (inputLine.Contains("!editcom") && isMod(nickname, reader))
-						{
-							string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
-
-							string[] words = commandInput.Split(' ');
-							string trigger = words[1];
-							List<string> responseWords = new List<string>();
-							int responseIndex = 2;
-							userLevels level = userLevels.User;
-
-							if (commandInput.Contains("ul="))
-							{
-								responseIndex = 3;
-								trigger = words[2];
-
-								string levelInput = words[1];
-								levelInput = levelInput.Replace("ul=", "");
-								//Console.WriteLine(levelInput);
-
-								if (levelInput == "owner")
-									level = userLevels.Owner;
-								else if (levelInput == "mod")
-									level = userLevels.Mod;
-								else if (levelInput == "reg")
-									level = userLevels.Regular;
-							}
-
-							for (int i = responseIndex; i < words.Length; i++)
-							{
-								responseWords.Add(words[i]);
-							}
-
-							string response = String.Join(" ", responseWords);
-
-							for (int i = 0; i < commands.Count; i++)
-							{
-								if (commands[i].trigger == trigger)
-								{
-									commands.Add(new Command(trigger, level, response));
-									commands.Remove(commands[i]);
-									break;
-								}
-							}
-							saveCommands();
-
-							Console.WriteLine(nickname + " - Editing command - " + trigger + ", " + response);
-
-							writer.WriteLine("PRIVMSG " + CHANNEL + " :" + nickname + "-> Edited command " + trigger);
-						}
-						else
-						{
-							string commandInput = inputLine.Substring(inputLine.IndexOf(":!") + 1);
-
-							foreach (Command command in commands)
-							{
-								if (command.trigger == commandInput)
-								{
-									if ((command.level < userLevels.Regular && isMod(nickname, reader)) || command.level >= userLevels.Regular)
-									{
-										Console.WriteLine(nickname + " - " + commandInput + " - " + command.response);
-										writer.WriteLine("PRIVMSG " + CHANNEL + " :" + command.response);
-										//writer.Flush();
-										break;
-									}
-								}
-							}
-						}
-                    }
+                    processLine(inputLine);
 				}
 
 				// Close all streams
